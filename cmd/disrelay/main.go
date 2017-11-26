@@ -129,6 +129,10 @@ func (b *bot) handleDiscord(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
+	for _, emb := range m.Attachments {
+		msg = msg + emb.URL + " "
+	}
+
 	ic, ok := b.channelMap[m.ChannelID]
 	if !ok {
 		return
