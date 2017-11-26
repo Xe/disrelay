@@ -17,5 +17,5 @@ IRC_TLS=true
 ## Running
 
 ```shell
-$ docker service create --name disrelay --env-file .env xena/disrelay:1.0
+$ docker service create --name disrelay --env-file .env xena/disrelay:1.2
 ```
