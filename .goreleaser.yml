@@ -1,4 +1,3 @@
-
 builds:
   - binary: disrelay
     main: ./cmd/disrelay/main.go

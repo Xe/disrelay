@@ -15,4 +15,4 @@ flatten
 
 cmd "/usr/local/bin/disrelay"
 
-tag "xena/disrelay:1.0"
+tag "xena/disrelay:1.2"

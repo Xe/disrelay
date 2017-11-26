@@ -138,9 +138,11 @@ func (b *bot) handleDiscord(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
-	err = b.messageIRC(ic, m.Author.Username, msg)
-	if err != nil {
-		ln.FatalErr(ctx, err, ln.F{"discord_channel": m.ChannelID, "discord_username": m.Author.Username, "msg": msg})
+	for _, ms := range strings.Split(msg, "\n") {
+		err = b.messageIRC(ic, m.Author.Username, ms)
+		if err != nil {
+			ln.FatalErr(ctx, err, ln.F{"discord_channel": m.ChannelID, "discord_username": m.Author.Username, "msg": msg})
+		}
 	}
 }
 
