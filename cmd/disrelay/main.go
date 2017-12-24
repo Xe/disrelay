@@ -29,7 +29,9 @@ var cfg struct {
 }
 
 func main() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = ln.WithF(ctx, ln.F{"running_in": "entrypoint"})
 
 	err := env.Parse(&cfg)
 	if err != nil {
@@ -104,7 +106,7 @@ func main() {
 		ln.FatalErr(ctx, err)
 	}
 
-	b.i.Run()
+	ln.FatalErr(ctx, b.i.Run())
 }
 
 type bot struct {
@@ -123,11 +125,18 @@ func (b *bot) handleDiscord(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	ctx := context.Background()
+
 	msg, err := m.ContentWithMoreMentionsReplaced(s)
 	if err != nil {
 		ln.Error(ctx, err)
 		return
 	}
+
+	ctx = ln.WithF(ctx, ln.F{
+		"discord_channel":  m.ChannelID,
+		"discord_username": m.Author.Username,
+		"msg":              msg,
+	})
 
 	for _, emb := range m.Attachments {
 		msg = msg + emb.URL + " "
@@ -139,9 +148,13 @@ func (b *bot) handleDiscord(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	for _, ms := range strings.Split(msg, "\n") {
+		if len(ms) == 0 {
+			continue
+		}
+
 		err = b.messageIRC(ic, m.Author.Username, ms)
 		if err != nil {
-			ln.FatalErr(ctx, err, ln.F{"discord_channel": m.ChannelID, "discord_username": m.Author.Username, "msg": msg})
+			ln.FatalErr(ctx, err)
 		}
 	}
 }
@@ -152,6 +165,11 @@ func (b *bot) bundlerHandler(channel string) func(interface{}) {
 		if !ok {
 			return
 		}
+
+		ln.Log(context.Background(), ln.Action("batch of lines from irc sent to discord"), ln.F{
+			"channel":      channel,
+			"num_messages": len(msgs),
+		})
 
 		msg := strings.Join(msgs, "\n")
 		_, err := b.s.ChannelMessageSend(channel, msg)
@@ -171,12 +189,25 @@ func (b *bot) messageDiscord(channel, who, what string) error {
 
 	bd.Add(msg, len(msg)+4)
 
+	ln.Log(context.Background(), ln.Action("line from irc queued for discord"), ln.F{
+		"channel": channel,
+		"who":     who,
+		"what":    what,
+	})
+
 	return nil
 }
 
 func (b *bot) messageIRC(channel, who, what string) error {
 	b.ilock.Lock()
 	defer b.ilock.Unlock()
+
+	ln.Log(context.Background(), ln.Action("line sent to irc from discord"), ln.F{
+		"channel": channel,
+		"who":     who,
+		"what":    what,
+	})
+
 	return b.i.Writef("PRIVMSG #%s :<%s> %s", channel, who, what)
 }
 
